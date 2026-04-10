@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
+from sqlalchemy import text
 from models import db, User, NoteReminder
 from auth import auth_bp
 from notes import notes_bp
@@ -78,8 +80,25 @@ def create_app():
     app.register_blueprint(notes_bp)
     app.register_blueprint(oauth_bp)
 
+    # Use ProxyFix for Render (handling https correctly)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
     with app.app_context():
         db.create_all()
+        # Sync sequences on startup if on Render
+        if os.environ.get("DATABASE_URL") and "render.com" in os.environ.get("DATABASE_URL", ""):
+            try:
+                tables = ["user", "note", "o_auth_account", "note_reminder"]
+                for table in tables:
+                    db.session.execute(text(f"""
+                        SELECT setval(
+                            pg_get_serial_sequence('"{table}"', 'id'),
+                            COALESCE(MAX(id), 1)
+                        ) FROM "{table}";
+                    """))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     def send_mail(to_email, subject, body):
         if not os.environ.get("MAIL_ENABLED"):

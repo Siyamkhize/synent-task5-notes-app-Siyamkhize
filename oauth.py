@@ -61,32 +61,38 @@ def _find_or_create_user(provider, sub, email, display_name):
 
 @oauth_bp.route("/oauth/callback/<provider>")
 def oauth_callback(provider):
-    client = oauth.create_client(provider)
-    if not client:
-        return redirect(url_for("auth.login"))
-    token = client.authorize_access_token()
-    if provider == "google":
-        userinfo = token.get("userinfo")
-        if not userinfo:
-            userinfo = client.get("userinfo").json()
-        sub = str(userinfo.get("sub") or "")
-        email = userinfo.get("email")
-        name = userinfo.get("name") or email or sub
-        user = _find_or_create_user("google", sub, email, name)
-        login_user(user)
-        return redirect(url_for("notes.index"))
-    if provider == "github":
-        me = client.get("user").json()
-        emails = client.get("user/emails").json()
-        primary_email = None
-        for e in emails or []:
-            if e.get("primary") and e.get("verified"):
-                primary_email = e.get("email")
-                break
-        sub = str(me.get("id") or "")
-        name = me.get("login") or primary_email or sub
-        user = _find_or_create_user("github", sub, primary_email, name)
-        login_user(user)
-        return redirect(url_for("notes.index"))
+    try:
+        client = oauth.create_client(provider)
+        if not client:
+            return redirect(url_for("auth.login"))
+        token = client.authorize_access_token()
+        if provider == "google":
+            userinfo = token.get("userinfo")
+            if not userinfo:
+                userinfo = client.get("userinfo").json()
+            sub = str(userinfo.get("sub") or "")
+            email = userinfo.get("email")
+            name = userinfo.get("name") or email or sub
+            user = _find_or_create_user("google", sub, email, name)
+            login_user(user)
+            return redirect(url_for("notes.index"))
+        if provider == "github":
+            me = client.get("user").json()
+            emails = client.get("user/emails").json()
+            primary_email = None
+            for e in emails or []:
+                if e.get("primary") and e.get("verified"):
+                    primary_email = e.get("email")
+                    break
+            sub = str(me.get("id") or "")
+            name = me.get("login") or primary_email or sub
+            user = _find_or_create_user("github", sub, primary_email, name)
+            login_user(user)
+            return redirect(url_for("notes.index"))
+    except Exception as e:
+        current_app.logger.error(f"OAuth Callback Error ({provider}): {str(e)}")
+        # If there's an error, we should rollback any partial database session
+        db.session.rollback()
+        return f"Authentication failed: {str(e)}", 500
     return redirect(url_for("auth.login"))
 
