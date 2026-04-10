@@ -85,9 +85,10 @@ def normalize_url(url: str) -> str:
 def scrape(url: str, include_titles: bool = True, include_prices: bool = True, limit: int = 50) -> List[Dict[str, str]]:
     url = normalize_url(url)
     try:
-        resp = requests.get(url, timeout=15, headers={"User-Agent": "NotesAppBot/1.0"})
+        resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
         resp.raise_for_status()
-    except Exception:
+    except Exception as e:
+        print(f"Scrape error for {url}: {e}")
         return []
     ctype = (resp.headers.get("Content-Type") or "").lower()
     if "text/html" not in ctype and "application/xhtml" not in ctype:

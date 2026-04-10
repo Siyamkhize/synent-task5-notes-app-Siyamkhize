@@ -109,8 +109,10 @@ def scrape_view():
         if url:
             try:
                 results = scrape(url, include_titles=include_titles, include_prices=include_prices, limit=limit)
-            except Exception:
-                error = "Failed to fetch or parse the page."
+                if not results:
+                    error = "No titles or prices found on this page. Try another URL."
+            except Exception as e:
+                error = f"Error: {str(e)}"
         else:
             error = "Please provide a valid URL."
     return render_template("scrape.html", results=results, source_url=url, error=error, include_titles=include_titles, include_prices=include_prices, limit=limit)
