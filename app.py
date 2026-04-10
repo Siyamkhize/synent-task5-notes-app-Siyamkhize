@@ -83,19 +83,32 @@ def create_app():
     # Use ProxyFix for Render (handling https correctly)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+    @app.errorhandler(500)
+    def internal_error(error):
+        import traceback
+        return f"Application Error: {str(error)}<br><pre>{traceback.format_exc()}</pre>", 500
+
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        db.session.remove()
+
     with app.app_context():
         db.create_all()
         # Sync sequences on startup if on Render
         if os.environ.get("DATABASE_URL") and "render.com" in os.environ.get("DATABASE_URL", ""):
             try:
-                tables = ["user", "note", "o_auth_account", "note_reminder"]
-                for table in tables:
-                    db.session.execute(text(f"""
-                        SELECT setval(
-                            pg_get_serial_sequence('"{table}"', 'id'),
-                            COALESCE(MAX(id), 1)
-                        ) FROM "{table}";
-                    """))
+                # Try both common naming conventions for the OAuth table
+                for table in ["user", "note", "o_auth_account", "oauth_account", "note_reminder"]:
+                    try:
+                        db.session.execute(text(f"""
+                            SELECT setval(
+                                pg_get_serial_sequence('"{table}"', 'id'),
+                                COALESCE(MAX(id), 1)
+                            ) FROM "{table}";
+                        """))
+                    except Exception:
+                        db.session.rollback()
+                        continue
                 db.session.commit()
             except Exception:
                 db.session.rollback()
