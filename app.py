@@ -104,7 +104,10 @@ def create_app():
         while True:
             try:
                 with app.app_context():
-                    now = datetime.utcnow()
+                    if datetime.now().tzinfo is not None:
+                        now = datetime.now(timezone.utc)
+                    else:
+                        now = datetime.utcnow()
                     due = NoteReminder.query.filter_by(notified=False).filter(NoteReminder.remind_at <= now).all()
                     for r in due:
                         user = r.user
@@ -127,9 +130,11 @@ def create_app():
     t.start()
 
     login_manager.login_view = "auth.login"
+
     return app
 
+# Expose app for Gunicorn
+app = create_app()
 
 if __name__ == "__main__":
-    app = create_app()
     app.run(debug=True, port=5055)
