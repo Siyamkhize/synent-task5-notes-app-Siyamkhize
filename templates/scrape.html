@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Scrape</h1>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row">
+    <input name="url" type="text" placeholder="https://example.com/product" value="{{ source_url or '' }}" required>
+  </div>
+  <div class="row" style="margin-top:8px; align-items: center;">
+    <label><input type="checkbox" name="include_titles" {% if include_titles %}checked{% endif %}> Titles</label>
+    <label><input type="checkbox" name="include_prices" {% if include_prices %}checked{% endif %}> Prices</label>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <label for="limit" class="muted">Limit</label>
+      <input id="limit" name="limit" type="number" min="1" max="100" value="{{ limit or 50 }}" style="width:100px;">
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <button type="submit">Fetch</button>
+  </div>
+</form>
+{% if error %}
+<div class="error" style="margin-top:8px">{{ error }}</div>
+{% endif %}
+{% if results is not none %}
+<hr style="margin:16px 0">
+<h2>Results</h2>
+<div class="muted" style="margin:6px 0">
+  Source: {% if source_url %}<a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">{{ source_url }}</a>{% else %}N/A{% endif %}
+</div>
+<div class="grid">
+{% for item in results %}
+  <div class="note">
+    <h3>{{ item.title }}</h3>
+    <div>{{ item.content }}</div>
+    <form method="post" action="{{ url_for('notes.save_scraped') }}" style="margin-top:8px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="title" value="{{ item.title }}">
+      <input type="hidden" name="content" value="{{ item.content }}">
+      <button type="submit">Save as Note</button>
+    </form>
+  </div>
+{% else %}
+  <div>No items</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

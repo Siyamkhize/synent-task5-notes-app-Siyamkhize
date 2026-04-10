@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Edit Note</h1>
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row">
+    <input name="title" type="text" value="{{ note.title }}">
+    <textarea name="content" rows="6">{{ note.content }}</textarea>
+  </div>
+  <details style="margin-top:8px">
+    <summary class="muted">Advanced options</summary>
+    <div class="row" style="margin-top:8px; gap:8px; align-items:center">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <label for="remind_at" class="muted">Reminder</label>
+        <input id="remind_at" name="remind_at" type="datetime-local" style="width:220px">
+      </div>
+      <div class="muted">Use the reminder controls on the list if you prefer.</div>
+    </div>
+  </details>
+  <div style="margin-top:10px">
+    <button type="submit">Save</button>
+    <a href="{{ url_for('notes.index') }}"><button type="button" class="secondary">Cancel</button></a>
+  </div>
+{% endblock %}
